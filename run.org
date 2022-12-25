@@ -1,8 +1,8 @@
 # -*- after-save-hook: (org-babel-tangle);-*-
-#+PROPERTY: header-args :tangle "./init.el"
+#+PROPERTY: header-args :tangle "/home/marc/.emacs.d/init.el"
 
 * Bootstrap ~straight.el~
-#+begin_src emacs-lisp :tangle "./early-init.el"
+#+begin_src emacs-lisp :tangle "/home/marc/.emacs.d/early-init.el"
   (defvar bootstrap-version)
   (let ((bootstrap-file
          (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
@@ -54,8 +54,7 @@
 
 * Fonts & Theme
 #+begin_src emacs-lisp
-  (set-face-attribute 'default nil :family "Roboto Mono" :height
-   140 :weight 'normal)
+  (set-face-attribute 'default nil :family "Julia Mono" :height 140)
   (load-theme 'modus-operandi)
 #+end_src
 
@@ -76,10 +75,53 @@
     (setq org-startup-folded t)
     (setq org-special-ctrl-a/e t)
     (setq calendar-week-start-day 1)
+    (setq org-hide-emphasis-markers t)
     :bind (("C-c c" . 'org-capture)
            ("C-c a" . 'org-agenda)))
 #+end_src
+** Roam
+#+begin_src emacs-lisp
+  (use-package org-roam
+    :init
+    (org-roam-db-autosync-mode)
+    :bind
+    (("C-c n l" . org-roam-buffer-toggle)
+     ("C-c n f" . org-roam-node-find)
+     ("C-c n g" . org-roam-ui-open)
+     ("C-c n i" . org-roam-node-insert)
+     ("C-c n c" . org-roam-capture)
+     ("C-c n m" . org-id-get-create)))
 
+  (setq org-roam-directory "~/doc/roam")
+  (define-key minibuffer-local-completion-map (kbd "SPC") 'self-insert-command)
+
+  (use-package org-roam-ui
+    :straight
+    (:host github :repo "org-roam/org-roam-ui" :branch "main" :files ("*.el" "out"))
+    :after org-roam
+    :config
+    (setq org-roam-ui-sync-theme t
+          org-roam-ui-follow t
+          org-roam-ui-update-on-save t
+          org-roam-ui-open-on-start nil))
+  #+end_src
+** Fragtog
+#+begin_src emacs-lisp
+  (use-package org-fragtog
+    :init
+    (add-hook 'org-mode-hook 'org-fragtog-mode))
+#+end_src
+** Anki
+#+begin_src emacs-lisp
+  (use-package org-anki
+    :config
+    (setq org-anki-default-deck "CSC")
+    :bind
+    ("C-c f s e" . org-anki-sync-entry)
+    ("C-c f s a" . org-anki-sync-all)
+    ("C-c f d e" . org-anki-delete-entry)
+    ("C-c f d a" . org-anki-delete-all))
+#+end_src
 * Editing behaviour
 #+begin_src emacs-lisp
   (global-auto-revert-mode)
@@ -106,13 +148,16 @@
 * EAF
 #+begin_src emacs-lisp
   (use-package eaf
-    :straight (eaf
-               :type git
-               :host github
-               :repo "emacs-eaf/emacs-application-framework"           
-               :files ("*.el" "*.py" "core" "app" "*.json")
-               :includes (eaf-pdf-viewer eaf-browser) ; Straight won't try to search for these packages when we make further use-package invocations for them
-               :pre-build (("python" "install-eaf.py" "--install" "pdf-viewer" "browser" "--ignore-sys-deps"))))
+     :straight (eaf
+                :type git
+                :host github
+                :repo "emacs-eaf/emacs-application-framework"           
+                :files ("*.el" "*.py" "core" "app" "*.json")
+                :includes (eaf-pdf-viewer eaf-browser) ; 
+                :pre-build (("python" "install-eaf.py" "--install" "pdf-viewer"
+     "browser" "--ignore-sys-deps"))))
+  (require 'eaf)
+  (require 'eaf-browser)
 #+end_src
 
 * Startup profiling
