@@ -54,7 +54,7 @@
 
 * Fonts & Theme
 #+begin_src emacs-lisp
-  (set-face-attribute 'default nil :family "Julia Mono" :height 140)
+  (set-face-attribute 'default nil :family "Julia Mono" :height 150)
   (load-theme 'modus-operandi)
 #+end_src
 
@@ -66,18 +66,15 @@
     (add-hook 'org-mode-hook 'org-indent-mode)
     (require 'org-tempo)
     :config
-    (setq org-directory "~/doc/org")
-    (setq org-agenda-files (list "inbox.org"))
-    (setq org-capture-templates
-          `(("i" "inbox" entry (file "inbox.org")
-             ,(concat "* TODO %?\n"
-                      "/Entered on/ %U"))))
-    (setq org-startup-folded t)
+    (setq org-latex-packages-alist '(("" "preamble" t)))
+    (setq org-export-with-toc nil)
+    (setq org-directory "~/w/school")
+    (setq org-agenda-files (list "schedule.org"))
+    (setq org-startup-folded 'showeverything)
     (setq org-special-ctrl-a/e t)
     (setq calendar-week-start-day 1)
     (setq org-hide-emphasis-markers t)
-    :bind (("C-c c" . 'org-capture)
-           ("C-c a" . 'org-agenda)))
+    :bind (("C-c a" . 'org-agenda)))
 #+end_src
 ** Roam
 #+begin_src emacs-lisp
@@ -92,7 +89,7 @@
      ("C-c n c" . org-roam-capture)
      ("C-c n m" . org-id-get-create)))
 
-  (setq org-roam-directory "~/doc/roam")
+  (setq org-roam-directory "~/doc/base")
   (define-key minibuffer-local-completion-map (kbd "SPC") 'self-insert-command)
 
   (use-package org-roam-ui
@@ -107,20 +104,28 @@
   #+end_src
 ** Fragtog
 #+begin_src emacs-lisp
-  (use-package org-fragtog
-    :init
-    (add-hook 'org-mode-hook 'org-fragtog-mode))
+   (use-package org-fragtog
+     :init
+     (add-hook 'org-mode-hook 'org-fragtog-mode))
 #+end_src
 ** Anki
 #+begin_src emacs-lisp
   (use-package org-anki
     :config
-    (setq org-anki-default-deck "CSC")
+    (setq org-anki-default-deck "discrete")
     :bind
     ("C-c f s e" . org-anki-sync-entry)
     ("C-c f s a" . org-anki-sync-all)
     ("C-c f d e" . org-anki-delete-entry)
     ("C-c f d a" . org-anki-delete-all))
+#+end_src
+** Journal
+#+begin_src emacs-lisp
+  (use-package org-journal
+    :config
+    (setq org-journal-dir "~/doc/journal")
+    :bind
+    ("C-c j n" . org-journal-new-entry))
 #+end_src
 * Editing behaviour
 #+begin_src emacs-lisp
@@ -128,42 +133,76 @@
   (setq tab-width 4)
 
   (setq-default auto-fill-function 'do-auto-fill)
-  (setq-default fill-column 80)
+  (setq-default fill-column 100)
 #+end_src
 
 * Rust
 #+begin_src emacs-lisp
   (use-package rustic
-    :defer)
+    :defer
+    :bind (("M-j" . lsp-ui-imenu)
+           ("M-?" . lsp-find-references)
+           ("C-c C-c l" . flycheck-list-errors)
+           ("C-c C-c a" . lsp-execute-code-action)
+           ("C-c C-c r" . lsp-rename)
+           ("C-c C-c q" . lsp-workspace-restart)
+           ("C-c C-c Q" . lsp-workspace-shutdown)
+           ("C-c C-c s" . lsp-rust-analyzer-status))
+      :config
+    ;; uncomment for less flashiness
+    (setq lsp-eldoc-hook nil)
+    (setq lsp-enable-symbol-highlighting nil)
+    (setq lsp-signature-auto-activate nil)
 
-  (add-hook 'rust-mode-hook
-            (lambda () (setq indent-tabs-mode nil)))
+    ;; comment to disable rustfmt on save
+    (setq rustic-format-on-save t)
+    (add-hook 'rustic-mode-hook 'rk/rustic-mode-hook))
+
+  (defun rk/rustic-mode-hook ()
+    ;; so that run C-c C-c C-r works without having to confirm, but don't try to
+    ;; save rust buffers that are not file visiting. Once
+    ;; https://github.com/brotzeit/rustic/issues/253 has been resolved this should
+    ;; no longer be necessary.
+    (when buffer-file-name
+      (setq-local buffer-save-without-query t))
+    (add-hook 'before-save-hook 'lsp-format-buffer nil t))
 #+end_src
+#+begin_src emacs-lisp
+  (use-package lsp-mode
+    :ensure
+    :commands lsp
+    :custom
+    ;; what to use when checking on-save. "check" is default, I prefer clippy
+    (lsp-rust-analyzer-cargo-watch-command "clippy")
+    (lsp-eldoc-render-all t)
+    (lsp-idle-delay 0.6)
+    ;; enable / disable the hints as you prefer:
+    (lsp-rust-analyzer-server-display-inlay-hints t)
+    (lsp-rust-analyzer-display-lifetime-elision-hints-enable "skip_trivial")
+    (lsp-rust-analyzer-display-chaining-hints t)
+    (lsp-rust-analyzer-display-lifetime-elision-hints-use-parameter-names nil)
+    (lsp-rust-analyzer-display-closure-return-type-hints t)
+    (lsp-rust-analyzer-display-parameter-hints nil)
+    (lsp-rust-analyzer-display-reborrow-hints nil)
+    :config
+    (add-hook 'lsp-mode-hook 'lsp-ui-mode))
 
+  (use-package lsp-ui
+    :commands lsp-ui-mode
+    :custom
+    (lsp-ui-peek-always-show nil)
+    (lsp-ui-sideline-show-hover nil)
+    (lsp-ui-doc-enable nil)
+    (setq lsp-signature-auto-activate nil)
+    (setq lsp-enable-symbol-highlighting nil))
+#+end_src
 * PDFTools
 #+begin_src emacs-lisp
   (use-package pdf-tools)
+  (pdf-tools-install)
+#+end_src
+* Haskell
+#+begin_src emacs-lisp
+(use-package haskell-mode)
 #+end_src
 
-* EAF
-#+begin_src emacs-lisp
-  (use-package eaf
-     :straight (eaf
-                :type git
-                :host github
-                :repo "emacs-eaf/emacs-application-framework"           
-                :files ("*.el" "*.py" "core" "app" "*.json")
-                :includes (eaf-pdf-viewer eaf-browser) ; 
-                :pre-build (("python" "install-eaf.py" "--install" "pdf-viewer"
-     "browser" "--ignore-sys-deps"))))
-  (require 'eaf)
-  (require 'eaf-browser)
-#+end_src
-
-* Startup profiling
-#+begin_src emacs-lisp
-  (use-package esup
-    :defer
-    :init
-    (setq esup-depth 0))
-#+end_src
